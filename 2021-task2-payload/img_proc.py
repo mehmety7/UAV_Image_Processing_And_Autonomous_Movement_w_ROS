@@ -10,7 +10,7 @@ import math
 from std_msgs.msg import String
 
 
-
+# for CSI port
 def gstreamer_pipeline(
         capture_width=1280,
         capture_height=720,
@@ -47,9 +47,9 @@ def state_callback(msg):
         global state
 
         state = msg.data
-if _name_ == '_main_':
+        if _name_ == '_main_':
 
-        rospy.init_node("image_kit", anonymous=True)
+        rospy.init_node("image_proc_node", anonymous=True)
         rospy.Subscriber("/img_node_state", String, state_callback)
 
         detect_pub = rospy.Publisher("/is_find_color", String, queue_size=1)

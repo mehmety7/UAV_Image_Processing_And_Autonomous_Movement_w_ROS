@@ -16,10 +16,8 @@ import math
 # -------------------------------------------------------------- GLOBAL DEFINITIONS ---------------------------------------------------
 # ################################################################################################################################################
 
-pose_pub = rospy.Publisher(
-    '/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-vel_pub = rospy.Publisher(
-    '/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
+pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+vel_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
 img_pub = rospy.Publisher("/img_node_state", String, queue_size=1)
 
 # define msgs
@@ -132,10 +130,8 @@ def setTakeoffMode(alt):
 
     rospy.wait_for_service('/mavros/cmd/takeoff')
     try:
-        takeoffService = rospy.ServiceProxy(
-            '/mavros/cmd/takeoff', mavros_msgs.srv.CommandTOL)
-        takeoffService(altitude=int(alt), latitude=0,
-                       longitude=0, min_pitch=0, yaw=0)
+        takeoffService = rospy.ServiceProxy('/mavros/cmd/takeoff', mavros_msgs.srv.CommandTOL)
+        takeoffService(altitude=int(alt), latitude=0,longitude=0, min_pitch=0, yaw=0)
     except rospy.ServiceException as e:
         print("Service takeoff call failed: %s" % e)
 
@@ -143,10 +139,8 @@ def setTakeoffMode(alt):
 def setLandMode():
     rospy.wait_for_service('/mavros/cmd/land')
     try:
-        takeoffService = rospy.ServiceProxy(
-            '/mavros/cmd/land', mavros_msgs.srv.CommandTOL)
-        takeoffService(altitude=0, latitude=0,
-                       longitude=0, min_pitch=0, yaw=0)
+        takeoffService = rospy.ServiceProxy('/mavros/cmd/land', mavros_msgs.srv.CommandTOL)
+        takeoffService(altitude=0, latitude=0,longitude=0, min_pitch=0, yaw=0)
     except rospy.ServiceException as e:
         print("Service takeoff call failed: %s" % e)
 
@@ -154,13 +148,19 @@ def setLandMode():
 def setGuidedMode():
     rospy.wait_for_service('/mavros/set_mode')
     try:
-        flightModeService = rospy.ServiceProxy(
-            '/mavros/set_mode', mavros_msgs.srv.SetMode)
-        # http://wiki.ros.org/mavros/CustomModes for custom modes
-        isModeChanged = flightModeService(
-            custom_mode='GUIDED')  # return true or false
+        flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+        isModeChanged = flightModeService(custom_mode='GUIDED')  # return true or false
     except rospy.ServiceException as e:
         print("service set_mode GUIDED call failed: %s. GUIDED Mode could not be set. Check that GPS is enabled" % e)
+        
+def setStreamRate():
+    rospy.wait_for_service('/mavros/set_stream_rate')
+    try:
+        streamService = rospy.ServiceProxy(
+            '/mavros/set_stream_rate', mavros_msgs.srv.StreamRate)
+        streamService(stream_id=0, message_rate=10,on_off=1)
+    except rospy.ServiceException as e:
+        print("Service stream call failed: %s" % e)
 
 
 # ################################################################################################################################################
@@ -169,11 +169,11 @@ def setGuidedMode():
 
 def globalPositionCallback(globalPositionCallback):
     global alt_navsatfix
-    alt_navsatfix = (float) globalPositionCallback.altitude
+    alt_navsatfix = globalPositionCallback.altitude
 
 def globalAltitudeCallback(globalAltitudeCB):
     global alt
-    alt = (float) globalAltitudeCB.data
+    alt = globalAltitudeCB.data
     if alt == 0.0 and alt_navsatfix != 0:
         alt = alt_navsatfix
 
@@ -188,6 +188,7 @@ def globalStateCallback(globalStateCB):
 def distanceCallback(data):
     global hcsr_distance
     hcsr_distance = data.data
+    
 def colorPositionCallback(colorPositionCallback):
     global current_pose_g
     global redx
@@ -206,6 +207,7 @@ def colorPositionCallback(colorPositionCallback):
     if okColor == "Blue":
         bluex = pos.x
         bluey = pos.y
+        
 def alignCallback(alignCallback):
     global align_x
     global align_y
@@ -231,6 +233,7 @@ def enu2local(data):
     point.z = z
 
     return point
+    
 def poseCallback(data):
     global current_heading_g
     global current_pose_g
@@ -242,8 +245,7 @@ def poseCallback(data):
     q1 = current_pose_g.pose.pose.orientation.x
     q2 = current_pose_g.pose.pose.orientation.y
     q3 = current_pose_g.pose.pose.orientation.z
-    psi = math.atan2((2*(q0*q3 + q1*q2)),
-                     (1 - 2*(math.pow(q2, 2) + math.pow(q3, 2))))
+    psi = math.atan2((2*(q0*q3 + q1*q2)), (1 - 2*(math.pow(q2, 2) + math.pow(q3, 2))))
 
     current_heading_g = psi*(180/math.pi) - local_offset_g
 
@@ -352,6 +354,7 @@ def set_destination(x, y, z, psi):
     waypoint_g.pose.position.z = z
 
     pose_pub.publish(waypoint_g)
+    
 def checkWaypointReached(posTolerance=0.3, headingTolerance=0.01):
 
     global local_desired_heading_g
@@ -382,7 +385,7 @@ headingErr = float(math.sqrt(math.pow(cosErr, 2) + math.pow(sinErr, 2)))
         return 0
 
 
-def setSpeed(speed):  # speed -- mps
+def setSpeed(speed):
 
     rospy.wait_for_service('/mavros/cmd/command')
     try:
@@ -436,8 +439,8 @@ def move_down():
 
         vel_pub.publish(velocity_msg)
 
-        if target_pool_color == "Blue":                          # blue pool height almost 70 cm, red pool's is almost 100 cm  
-            if hcsr_distance <= 78.0:                          # hc-sr mesaji burdan dinlenecek
+        if target_pool_color == "Blue":                          
+            if hcsr_distance <= 78.0:                        
                 break
         elif target_pool_color == "Red":
             if hcsr_distance <= 110.0:
@@ -457,7 +460,6 @@ def move_up(h):
         pull_roll = False
 
     velocity_msg.linear.z = 0.5
-    #velocity_msg.linear.y = -0.1               # kalkista care olmazsa sil
     while True:
 
         vel_pub.publish(velocity_msg)
@@ -570,206 +572,7 @@ def alignment_blue():
                 print("Hedef -Y yonunde!")
                 moveX(0.4, 1.0)
 
-
-# ################################################################################################################################################
-# -------------------------------------------------------------- TESTS ---------------------------------------------------
-# ################################################################################################################################################
-'''
-# ################################################################################################################################################
--------------------------------------------------------------------- MAP ------------------------------------------------------------------------
-                (-30,-30)                                       red(-30.4,-11.5)                   (-30.0)              blue(-30.9,16.7)  (-30,30)
-                (0,-30)                                                                            (0,0)                                  (0,30)
-                (30, -30)                                                                          (30,0)                                 (30,30)
- ################################################################################################################################################
-'''
-
-# right - forward - up  -------------  positive sides
-# 0(default) - 90(left) - 180(behind) - -90(right)  --------------- angular system
-
-def alignment_test(h):
-    global okColor
-    global msg_for_img
-
-    list1 = []
-    list1.append(Waypoint(0, 0, h, 90))
-    list1.append(Waypoint(-30, 0, h, 90))
-    counter = 0
-    alg_red = False
-    alg_blue = False
-    while not rospy.is_shutdown():
-        img_pub.publish(msg_for_img)
-        rospy.sleep(.2)
-        '''
-        if okColor == "Red" and not alg_red:
-            rospy.sleep(0.7)
-            stop()
-            if alignment_red():
-                msg_for_img = "2"
-                print("Kirmizya inis basliyor ..!")
-                move_down()
-                print("Kirmizidan kalkis basliyor ..!")
-                move_up(h)
-                set_destination(
-                    list1[counter-1].x, list1[counter-1].y, list1[counter-1].z, list1[counter-1].psi)
-                alg_red = True
-        '''        
-        if okColor == "Blue" and not alg_blue:
-            rospy.sleep(0.5)
-            stop()
-            if alignment_blue():
-                msg_for_img = "1"
-                print("Maviye inis basliyor ..!")
-                move_down()
-                print("Maviden kalkis basliyor ..!")
-                move_up(h)
-                set_destination(
-                    list1[counter-1].x, list1[counter-1].y, list1[counter-1].z, list1[counter-1].psi)
-                alg_blue = True
-
-        if checkWaypointReached(.3) == 1:
-            if counter < len(list1):
-
-                set_destination(
-                    list1[counter].x, list1[counter].y, list1[counter].z, list1[counter].psi)
-
-                counter = counter + 1
-            else:
-                break
-
-
-
-def square_test(h):
-
-    listt = []
-    listt.append(Waypoint(0, 5, h, 0))
-    listt.append(Waypoint(-5, 5, h, 90))
-    listt.append(Waypoint(-5, -5, h, 180))
-    listt.append(Waypoint(0, -5, h, -90))
-    listt.append(Waypoint(0, 0, h, 0))
-
-    counter = 0
-    while not rospy.is_shutdown():
-
-        img_pub.publish(msg_for_img)
-        rospy.sleep(.1)     
-        if checkWaypointReached(.3) == 1:
-            if counter < len(listt):
-                print(listt[counter].x, listt[counter].y, listt[counter].z, listt[counter].psi)
-                set_destination(
-                    listt[counter].x, listt[counter].y, listt[counter].z, listt[counter].psi)
-
-                counter = counter + 1
-                print(counter)
-            else:
-                break
-
-def mission2(h):
-
-    global okColor
-    global msg_for_img
-    global redx
-    global redy
-
-    listt = []
-    listt.append(Waypoint(0, 30, h, 0))
-    listt.append(Waypoint(-30, 30, h, 90))
-    listt.append(Waypoint(-30, -30, h, 180))
-    listt.append(Waypoint(0, -30, h, -90))
-
-    listt.append(Waypoint(0, 30, h, 0))
-    listt.append(Waypoint(-30, 30, h, 90))
-    listt.append(Waypoint(-30, -30, h, 180))
-    listt.append(Waypoint(0, -30, h, -90))
-    listt.append(Waypoint(0, 0, h, 0))
-
-    counter = 0
-    alg_red = False
-    alg_blue = False
-    target_save = False
-    bluesX = []
-    bluesY = []
-    redsX = []
-    redsY = []
-    while not rospy.is_shutdown():
-
-        img_pub.publish(msg_for_img)
-        rospy.sleep(.1)
-
-        if counter == 2 or counter == 4:
-            msg_for_img = "0"
-
-        if counter == 3:
-            msg_for_img = "1"
-
-        if counter == 2 and okColor == "Blue":
-            bluesX.append(bluex)
-            bluesY.append(bluey)
-
-        if counter == 3 and okColor == "Red":
-            redsX.append(redx)
-            redsY.append(redy)
-
-        if not target_save and counter == 4:
-            Xred = redsX[int(len(redsX)/2)]
-            Yred = redsY[int(len(redsY)/2)]
-            Xblue = bluesX[int(len(bluesX)/2)]
-            Yblue = bluesY[int(len(bluesY)/2)]
-            print("Red X: {:.7f} , Red Y: {:.7f}".format(Xred, Yred))
-            print("Blue X: {:.7f} , Blue Y: {:.7f}".format(Xblue, Yblue))
-            target_save = True
-
-        if counter == 6 and okColor == "Blue" and not alg_blue:
-            rospy.sleep(0.4)
-            stop()
-            if alignment_blue():
-                if alignment_blue():
-                    print("Maviye inis basliyor ..!")
-                    move_down()
-                    print("Maviden kalkis basliyor ..!")
-                    move_up(h)
-                    set_destination(Xred, Yred, h, 180)
-                    alg_blue = True
-                    target_pool_color = "Red"
-                    msg_for_img = "1"
-        if (counter == 7 or counter == 6) and okColor == "Red" and not alg_red and alg_blue:
-            rospy.sleep(0.4)
-            stop()
-            if alignment_red():
-                if alignment_red():
-                    print("Kirmizya inis basliyor ..!")
-                    move_down()
-                    print("Kirmizidan kalkis basliyor ..!")
-                    move_up(h)
-                    set_destination(Xred, Yred, h, 180)
-                    alg_blue = True
-                    target_pool_color = "Red"
-                    msg_for_img = "1"
-        if (counter == 7 or counter == 6) and okColor == "Red" and not alg_red and alg_blue:
-            rospy.sleep(0.4)
-            stop()
-            if alignment_red():
-                if alignment_red():
-                    print("Kirmizya inis basliyor ..!")
-                    move_down()
-                    print("Kirmizidan kalkis basliyor ..!")
-                    move_up(h)
-                    counter = 7
-                    set_destination(
-                        listt[counter-1].x, listt[counter-1].y, listt[counter-1].z, listt[counter-1].psi)
-                    print(listt[counter-1].x, listt[counter-1].y, listt[counter-1].z, listt[counter-1].psi)
-                    alg_red = True
-                    msg_for_img = "2"
-
-        if checkWaypointReached(.3) == 1:
-            if counter < len(listt):
-                print(listt[counter].x, listt[counter].y, listt[counter].z, listt[counter].psi)
-                set_destination(
-                    listt[counter].x, listt[counter].y, listt[counter].z, listt[counter].psi)
-
-                counter = counter + 1
-                print(counter)
-            else:
-                break
+#------------------------------------------------------------------------------------------------------------------------------------
 
 def mission2_revised(h):
 
@@ -887,12 +690,11 @@ def mission2_revised(h):
 
 if _name_ == '_main_':
 
-    rospy.init_node('otonom_kit', anonymous=True)
+    rospy.init_node('auto_move_node', anonymous=True)
 
     rate = rospy.Rate(2.0)
 
-    rospy.Subscriber("/mavros/global_position/rel_alt",
-                     Float64, globalAltitudeCallback)
+    rospy.Subscriber("/mavros/global_position/rel_alt",Float64, globalAltitudeCallback)
     rospy.Subscriber("/mavros/state", State, globalStateCallback)
     rospy.Subscriber("/mavros/global_position/local", Odometry, poseCallback)
     rospy.Subscriber("/is_find_color", String, colorPositionCallback)
@@ -937,12 +739,8 @@ if _name_ == '_main_':
 
     setSpeed(10.0)
 
-    #mission2(h)
     mission2_revised(h)
     setLandMode()
 
     msg_for_img = "3"
     img_pub.publish(msg_for_img)
-
-    # MAVI - SU ALMA
-    # KIRMIZI - SU BIRAKMA
